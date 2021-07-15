@@ -1,0 +1,107 @@
+stages:
+- build
+########################################################################################################################
+####START####                                     PROJECT LEVEL VARIABLES                                  ####START####
+########################################################################################################################
+variables:
+  PACKAGE_DIR_LINUX: linux64
+  PACKAGE_DIR_WINDOWS: win64
+  SFUSD_ARTIFACTS_LINUX: ${PACKAGE_DIR_LINUX}.tar.gz
+  SFUSD_ARTIFACTS_WINDOWS: ${PACKAGE_DIR_WINDOWS}.zip
+  SFUSD_ARTIFACTS_LINUX_CHECKSUM: ${SFUSD_ARTIFACTS_LINUX}.md5
+  SFUSD_ARTIFACTS_WINDOWS_CHECKSUM: ${SFUSD_ARTIFACTS_WINDOWS}.md5
+  ARTIFACT_EXPIRATION: 1 week
+
+########################################################################################################################
+####END####                                        PROJECT LEVEL VARIABLES                                   ####END####
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+####START####          Build Stage: compile and package sfusd binaries for the SFUSD Wallet.             ####START#####
+########################################################################################################################
+########################################################################################################################
+####START####                                            LINUX                                             ####START####
+########################################################################################################################
+build:ubuntu:
+  stage: build
+  image: ca333/namecoin-build:sfusd-linux
+  variables:
+    DOCKER_DRIVER: overlay2
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+    - depends/
+  script:
+  - ./autogen.sh
+  - ./configure
+  - make
+  - mkdir ${PACKAGE_DIR_LINUX}
+  - cp src/smartusdd
+    src/smartusd-cli
+    src/smart
+    ${PACKAGE_DIR_LINUX}
+  - chmod +x ${PACKAGE_DIR_LINUX}/smartusdd
+  - chmod +x ${PACKAGE_DIR_LINUX}/smartusd-cli
+  - tar -czvf ${SFUSD_ARTIFACTS_LINUX} ${PACKAGE_DIR_LINUX}
+  - shasum -a 256 ${SFUSD_ARTIFACTS_LINUX} > ${SFUSD_ARTIFACTS_LINUX_CHECKSUM}
+  only:
+  - master
+  - dev
+  artifacts:
+    paths:
+    - ${SFUSD_ARTIFACTS_LINUX}
+    - ${SFUSD_ARTIFACTS_LINUX_CHECKSUM}
+    expire_in: 1 week
+
+########################################################################################################################
+####END####                                              LINUX                                               ####END####
+########################################################################################################################
+####START####                                           WINDOWS                                            ####START####
+########################################################################################################################
+build:windows:
+  stage: build
+  image:  ca333/namecoin-build:sfusd-windows
+  variables:
+    DOCKER_DRIVER: overlay2
+  cache:
+    key: "${CI_JOB_NAME}${CI_COMMIT_REF_NAME}"
+    paths:
+    - depends/built
+  script:
+  - PATH=$(echo "$PATH" | sed -e 's/:\/mnt.*//g')
+  - cd depends
+  - make HOST=x86_64-w64-mingw32
+  - cd ..
+  - ./autogen.sh
+  - CONFIG_SITE=$PWD/depends/x86_64-w64-mingw32/share/config.site ./configure --prefix=/
+  - make
+  - mkdir ${PACKAGE_DIR_WINDOWS}
+  - cp src/smartusdd.exe
+    src/smartusd-cli.exe
+    src/smartusd-tx.exe
+    src/smartusd-qt.exe
+    ${PACKAGE_DIR_WINDOWS}
+  - zip -r ${PACKAGE_DIR_WINDOWS}.zip ${PACKAGE_DIR_WINDOWS}
+  - md5sum ${SFUSD_ARTIFACTS_WINDOWS} > ${SFUSD_ARTIFACTS_WINDOWS_CHECKSUM}
+  only:
+  - master
+  - dev
+  artifacts:
+    paths:
+    - ${SFUSD_ARTIFACTS_WINDOWS}
+    - ${SFUSD_ARTIFACTS_WINDOWS_CHECKSUM}
+    expire_in: 1 week
+########################################################################################################################
+####END####                                             WINDOWS                                              ####END####
+
+
+########################################################################################################################
+####END####                                           Build Stage                                            ####END####
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+####START####     Test stage: Produce code quality  and static application security test reports.          ####START####
+########################################################################################################################
+########################################################################################################################
+
