@@ -38,7 +38,6 @@ build:ubuntu:
   - mkdir ${PACKAGE_DIR_LINUX}
   - cp src/smartusdd
     src/smartusd-cli
-    src/smart
     ${PACKAGE_DIR_LINUX}
   - chmod +x ${PACKAGE_DIR_LINUX}/smartusdd
   - chmod +x ${PACKAGE_DIR_LINUX}/smartusd-cli
